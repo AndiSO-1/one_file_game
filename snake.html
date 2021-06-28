@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Page Title</title>
+		<script src="https://code.jquery.com/jquery-3.5.0.js"></script>
+	</head>
+
+	<style>
+	#game_border{
+		border: 1px solid black;
+		display: flex;
+		flex-direction: row;
+		justify-content: space-between;
+	}
+	#game{
+		width: 800px;
+		height: 800px;
+		background-color: lightgray;
+		/* border: 1px solid black; */
+	}
+	#left_panel{
+		border: 1 solid black;
+		border: 1px solid red;
+		display: flex;
+		flex-direction: column;
+	}
+	#right_panel{
+		border: 1 solid black;
+		border: 1px solid red;
+		display: flex;
+		flex-direction: column;
+	}
+	</style>
+
+	<script>
+	let canvas;
+	let ctx;
+	const TOP = "top";
+	const BOT = "bot";
+	const RIGHT = "right";
+	const LEFT = "left";
+	const PIXEL_SIZE = 100;
+	let game = Array.from(Array(50), () => new Array(50)) // TODO use this for the apple new position
+	let default_snake = {
+		id: "snake",
+		name: "snake",
+		direction: RIGHT,
+		last_direction: RIGHT,
+		width: PIXEL_SIZE,
+		height: PIXEL_SIZE,
+	  x: 0 * PIXEL_SIZE,
+	  y: 0 * PIXEL_SIZE,
+	  vx: PIXEL_SIZE,
+	  vy: PIXEL_SIZE,
+		key_top: 87,
+		key_bot: 83,
+		key_right: 68,
+		key_left: 65,
+		score: 0,
+		head_color: 'green',
+	  color: 'limegreen',
+		alive: true,
+		body: [],
+	  draw: function() {
+	    ctx.beginPath();
+	    ctx.rect(this.x, this.y, this.width, this.height);
+	    ctx.closePath();
+	    ctx.fillStyle = this.head_color;
+	    ctx.fill();
+	  },
+		draw_body: function() {
+			for (let i = this.body.length-1; i >= 0; i--) {
+				if(i == 0){
+					this.body[i] = {
+						x: this.x,
+						y: this.y,
+					}
+				}
+				else{
+					this.body[i] = {
+						x: this.body[i-1].x,
+						y: this.body[i-1].y,
+					}
+				}
+				ctx.beginPath();
+				ctx.rect(this.body[i].x, this.body[i].y, this.width, this.height);
+				ctx.closePath();
+				ctx.fillStyle = this.color;
+				ctx.fill();
+			}
+	  },
+		draw_score: function(){
+			if ($("#" + this.id).length){
+				$("#" + this.id).html(this.score);
+			}
+			else{
+				$("#scores").append('<li>'+ this.name +' : <span id="'+ this.id +'">0</span></li>');
+				$("#" + this.id).html(this.score);
+			}
+		},
+		key_press: function(key){
+			switch(key) {
+				case this.key_top:
+				this.direction = this.last_direction != BOT ? TOP : this.last_direction;
+				break;
+				case this.key_bot:
+				this.direction = this.last_direction != TOP ? BOT : this.last_direction;
+				break;
+				case this.key_right:
+				this.direction = this.last_direction != LEFT ? RIGHT : this.last_direction;
+				break;
+				case this.key_left:
+				this.direction = this.last_direction != RIGHT ? LEFT : this.last_direction;
+				break;
+			}
+		},
+		move: function(){
+			if (this.alive){
+				this.draw_body();
+				switch(this.direction) {
+					// TOP
+					case TOP:
+					this.y -= this.vy;
+					if (this.y + this.vy < PIXEL_SIZE-1) {
+					  this.y = canvas.height- PIXEL_SIZE;
+					}
+					break;
+					// BOT
+					case BOT:
+					this.y += this.vy;
+					if (this.y + this.vy > canvas.height) {
+					  this.y = 0;
+					}
+					break;
+					// RIGHT
+					case RIGHT:
+					this.x += this.vx;
+					if (this.x + this.vx > canvas.width) {
+					  this.x = 0;
+					}
+					break;
+					// LEFT
+					case LEFT:
+					this.x -= this.vx;
+					if (this.x + this.vx < PIXEL_SIZE-1) {
+					  this.x = canvas.width-PIXEL_SIZE;
+					}
+					break;
+				}
+				this.draw();
+				this.last_direction = this.direction;
+			}
+		},
+		add_size: function(){
+			this.body.push({
+				x: null,
+				y: null,
+			});
+		},
+	};
+	let default_apple = {
+		width: PIXEL_SIZE,
+		height: PIXEL_SIZE,
+		x: 2 * PIXEL_SIZE,
+		y: 2 * PIXEL_SIZE,
+		score: 100,
+		color: 'red',
+		draw: function() {
+	    ctx.beginPath();
+	    ctx.rect(this.x, this.y, this.width, this.height);
+	    ctx.closePath();
+	    ctx.fillStyle = this.color;
+	    ctx.fill();
+	  },
+		get_eat: function(obj){
+			// obj.add_size();
+			random_position(this);
+			gain_points(obj, this);
+		},
+	}
+	let in_game = false;
+	let snakes = [];
+	let foods = [];
+
+	function eat(){
+		for(let i = 0; i < snakes.length; i++) {
+			for(let j = 0; j < foods.length; j++) {
+				if (foods[j].x == snakes[i].x && foods[j].y == snakes[i].y){
+					foods[j].get_eat(snakes[i]);
+					snakes[i].add_size();
+				}
+			}
+		}
+	}
+
+	function hit_something(){
+		for(let i = 0; i < snakes.length; i++) {
+			for(let j = 0; j < snakes.length; j++) {
+				for(let k = 0; k < snakes[j].body.length; k++) {
+					if (snakes[i].x == snakes[j].body[k].x && snakes[i].y == snakes[j].body[k].y) {
+		        snakes[i].alive = false;
+			    }
+				}
+			}
+		}
+	}
+
+	function random_position(obj){
+		obj.x = Math.floor(Math.random() * (canvas.width/PIXEL_SIZE)) * PIXEL_SIZE;
+		obj.y = Math.floor(Math.random() * (canvas.height/PIXEL_SIZE)) * PIXEL_SIZE;
+	}
+
+	function gain_points(o_snake, o_food){
+		o_snake.score += o_food.score;
+		o_snake.draw_score();
+	}
+
+	function getRandomColor() {
+	  let letters = '0123456789ABCDEF';
+	  let color = '#';
+	  for (let i = 0; i < 6; i++) {
+			color += letters[Math.floor(Math.random() * 16)];
+	  }
+	  return color;
+	}
+
+	function game_on(){
+		setTimeout(function() {
+			ctx.clearRect(0,0, canvas.width, canvas.height);
+
+			for(let i = 0; i < snakes.length; i++) {
+				snakes[i].move();
+			}
+			for(let i = 0; i < foods.length; i++) {
+		    foods[i].draw();
+			}
+
+			eat();
+
+			hit_something();
+
+			if (!all_dead()){
+				game_on();
+			}
+			else{
+				game_end();
+			}
+		}, 200);
+	}
+
+	function all_dead(){
+		for(let i = 0; i < snakes.length; i++) {
+			if(snakes[i].alive){
+				return false;
+			}
+		}
+		return true;
+	}
+
+	function game_end(){
+		alert("Vu avez perdu! Regardez les points à droite :D");
+	}
+
+	function startGame(){
+		if (!in_game){
+			let nbSnakes = $('#nb_snakes').val();
+			let nbFoods = $('#nb_apple').val();
+
+			// All objects of the game
+			for(let i = 0; i < nbSnakes; i++) {
+		    snakes.push(Object.assign({}, default_snake));
+			}
+			for(let i = 0; i < nbFoods; i++) {
+		    foods.push(Object.assign({}, default_apple));
+			}
+
+			// Default values need change for the objects
+			for(let i = 0; i < snakes.length; i++) {
+				random_position(snakes[i]);
+				snakes[i].id = "snake_" + Math.floor(Math.random() * 999999),
+				snakes[i].name = "snake_" + Math.floor(Math.random() * 999999),
+				snakes[i].head_color = getRandomColor();
+		    snakes[i].draw();
+			}
+			for(let i = 0; i < foods.length; i++) {
+				random_position(foods[i]);
+		    foods[i].draw();
+			}
+			game_on();
+			in_game = true;
+		}
+	}
+
+	function setupCanvas() {
+		canvas = document.getElementById("game");
+	  // Get the device pixel ratio, falling back to 1.
+	  let dpr = window.devicePixelRatio || 1;
+	  // Get the size of the canvas in CSS pixels.
+	  let rect = canvas.getBoundingClientRect();
+	  // Give the canvas pixel dimensions of their CSS
+	  // size * the device pixel ratio.
+	  canvas.width = rect.width * dpr;
+	  canvas.height = rect.height * dpr;
+	  ctx = canvas.getContext('2d');
+	  // Scale all drawing operations by the dpr, so you
+	  // don't have to worry about the difference.
+	  ctx.scale(dpr, dpr);
+	}
+
+	// Game running
+	$(function(){
+		setupCanvas();
+	});
+
+	$(document).keydown(function(event) {
+		let key = (event.keyCode ? event.keyCode : event.which);
+		for(let i = 0; i < snakes.length; i++) {
+			snakes[i].key_press(key);
+		}
+	});
+	</script>
+
+	<body>
+		<div id="game_border">
+			<div id="left_panel">
+				<button type="button" onclick="startGame()">play</button>
+				<div>
+					<label for="nb_snakes">Nb Snakes</label>
+				  <input type="number" id="nb_snakes" name="nb_snakes" value="1">
+				</div>
+				<div>
+					<label for="nb_apple">Nb Apples</label>
+				  <input type="number" id="nb_apple" name="nb_apple" value="1">
+				</div>
+			</div>
+			<canvas id="game"></canvas>
+			<div id="right_panel">
+				<p>Scores :</p>
+				<ul id="scores">
+				</ul>
+			</div>
+		</div>
+	</body>
+</html>
