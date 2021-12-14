@@ -39,7 +39,7 @@
 	const BOT = "bot";
 	const RIGHT = "right";
 	const LEFT = "left";
-	const PIXEL_SIZE = 100;
+	const PIXEL_SIZE = 50;
 	let game = Array.from(Array(50), () => new Array(50)) // TODO use this for the apple new position
 	let default_snake = {
 		id: "snake",
@@ -195,11 +195,15 @@
 
 	function hit_something(){
 		for(let i = 0; i < snakes.length; i++) {
-			for(let j = 0; j < snakes.length; j++) {
-				for(let k = 0; k < snakes[j].body.length; k++) {
-					if (snakes[i].x == snakes[j].body[k].x && snakes[i].y == snakes[j].body[k].y) {
-		        snakes[i].alive = false;
-			    }
+			if (snakes[i].alive) {
+				for(let j = 0; j < snakes.length; j++) {
+					if (snakes[j].alive) {
+						for(let k = 0; k < snakes[j].body.length; k++) {
+							if (snakes[i].x == snakes[j].body[k].x && snakes[i].y == snakes[j].body[k].y) {
+				        snakes[i].alive = false;
+					    }
+						}
+					}
 				}
 			}
 		}
@@ -281,6 +285,14 @@
 				snakes[i].name = "snake_" + Math.floor(Math.random() * 999999),
 				snakes[i].head_color = getRandomColor();
 		    snakes[i].draw();
+		    snakes[i].body = [];
+				if (i == 1)
+				{
+					snakes[i].key_top = 38
+					snakes[i].key_bot = 40
+					snakes[i].key_right = 39
+					snakes[i].key_left = 37
+				}
 			}
 			for(let i = 0; i < foods.length; i++) {
 				random_position(foods[i]);
